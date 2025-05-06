@@ -1,189 +1,108 @@
 from typing import Any
-
 from universal_mcp.applications import APIApplication
 from universal_mcp.integrations import Integration
 
-
 class FigmaApp(APIApplication):
     def __init__(self, integration: Integration = None, **kwargs) -> None:
-        super().__init__(name="figma", integration=integration, **kwargs)
+        super().__init__(name='figmaapp', integration=integration, **kwargs)
         self.base_url = "https://api.figma.com"
 
-    def get_file(
-        self,
-        file_key,
-        version=None,
-        ids=None,
-        depth=None,
-        geometry=None,
-        plugin_data=None,
-        branch_data=None,
-    ) -> Any:
+    def get_file(self, file_key, version=None, ids=None, depth=None, geometry=None, plugin_data=None, branch_data=None) -> dict[str, Any]:
         """
-        Retrieves file metadata and content from the API using the specified file key and optional query parameters.
+        Retrieves a specified file's data (including versions, geometry, and plugin information) from the API using a unique file identifier.
 
         Args:
-            file_key: str. The unique identifier for the file to retrieve. Required.
-            version: Optional[str]. The version of the file to retrieve. If not specified, the latest version is returned.
-            ids: Optional[str or list]. Specific node IDs within the file to retrieve.
-            depth: Optional[int]. The depth of the node tree to fetch for the file.
-            geometry: Optional[str]. The geometry format to use when retrieving the file.
-            plugin_data: Optional[str]. Plugin data to include in the response, if applicable.
-            branch_data: Optional[str]. Branch data to include in the response, if applicable.
+            file_key (string): file_key
+            version (string): A specific version ID to get. Omitting this will get the current version of the file.
+            ids (string): Comma separated list of nodes that you care about in the document. If specified, only a subset of the document will be returned corresponding to the nodes listed, their children, and everything between the root node and the listed nodes. Note: There may be other nodes included in the returned JSON that are outside the ancestor chains of the desired nodes. The response may also include dependencies of anything in the nodes' subtrees. For example, if a node subtree contains an instance of a local component that lives elsewhere in that file, that component and its ancestor chain will also be included. For historical reasons, top-level canvas nodes are always returned, regardless of whether they are listed in the `ids` parameter. This quirk may be removed in a future version of the API.
+            depth (number): Positive integer representing how deep into the document tree to traverse. For example, setting this to 1 returns only Pages, setting it to 2 returns Pages and all top level objects on each page. Not setting this parameter returns all nodes.
+            geometry (string): Set to "paths" to export vector data.
+            plugin_data (string): A comma separated list of plugin IDs and/or the string "shared". Any data present in the document written by those plugins will be included in the result in the `pluginData` and `sharedPluginData` properties.
+            branch_data (boolean): Returns branch metadata for the requested file. If the file is a branch, the main file's key will be included in the returned response. If the file has branches, their metadata will be included in the returned response. Default: false.
 
         Returns:
-            dict. The JSON-decoded response containing file metadata and content.
-
-        Raises:
-            ValueError: Raised if 'file_key' is not provided.
-            requests.HTTPError: Raised if the API request fails (non-2xx response).
+            dict[str, Any]: Response from the GET /v1/files/{file_key} endpoint.
 
         Tags:
-            get, file, api, metadata, content, important
+            Files
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         url = f"{self.base_url}/v1/files/{file_key}"
-        query_params = {
-            k: v
-            for k, v in [
-                ("version", version),
-                ("ids", ids),
-                ("depth", depth),
-                ("geometry", geometry),
-                ("plugin_data", plugin_data),
-                ("branch_data", branch_data),
-            ]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('version', version), ('ids', ids), ('depth', depth), ('geometry', geometry), ('plugin_data', plugin_data), ('branch_data', branch_data)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_file_nodes(
-        self, file_key, ids, version=None, depth=None, geometry=None, plugin_data=None
-    ) -> Any:
+    def get_file_nodes(self, file_key, ids, version=None, depth=None, geometry=None, plugin_data=None) -> dict[str, Any]:
         """
-        Fetches node data for specified IDs from a file, supporting optional filters such as version, depth, geometry, and plugin data.
+        Retrieves nodes related to a file identified by the "file_key" using the specified query parameters for filtering by "ids", "version", "depth", "geometry", and "plugin_data".
 
         Args:
-            file_key: str. The unique key identifying the file to query. Required.
-            ids: str or list. The node ID(s) to retrieve from the file. Required.
-            version: str or None. Optional file version to query. Defaults to the latest if not specified.
-            depth: int or None. Optional depth for retrieving nested node data.
-            geometry: str or None. Optional geometry specifier to filter node data.
-            plugin_data: str or None. Optional plugin data to include in the response.
+            file_key (string): file_key
+            ids (string): A comma separated list of node IDs to retrieve and convert.
+            version (string): A specific version ID to get. Omitting this will get the current version of the file.
+            depth (number): Positive integer representing how deep into the node tree to traverse. For example, setting this to 1 will return only the children directly underneath the desired nodes. Not setting this parameter returns all nodes. Note: this parameter behaves differently from the same parameter in the `GET /v1/files/:key` endpoint. In this endpoint, the depth will be counted starting from the desired node rather than the document root node.
+            geometry (string): Set to "paths" to export vector data.
+            plugin_data (string): A comma separated list of plugin IDs and/or the string "shared". Any data present in the document written by those plugins will be included in the result in the `pluginData` and `sharedPluginData` properties.
 
         Returns:
-            dict. The JSON-decoded response containing node data for the requested IDs.
-
-        Raises:
-            ValueError: Raised if 'file_key' or 'ids' is not provided.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/nodes endpoint.
 
         Tags:
-            get, fetch, node-data, file, api
+            Files
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
-        if ids is None:
-            raise ValueError("Missing required parameter 'ids'")
         url = f"{self.base_url}/v1/files/{file_key}/nodes"
-        query_params = {
-            k: v
-            for k, v in [
-                ("ids", ids),
-                ("version", version),
-                ("depth", depth),
-                ("geometry", geometry),
-                ("plugin_data", plugin_data),
-            ]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('ids', ids), ('version', version), ('depth', depth), ('geometry', geometry), ('plugin_data', plugin_data)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_images(
-        self,
-        file_key,
-        ids,
-        version=None,
-        scale=None,
-        format=None,
-        svg_outline_text=None,
-        svg_include_id=None,
-        svg_include_node_id=None,
-        svg_simplify_stroke=None,
-        contents_only=None,
-        use_absolute_bounds=None,
-    ) -> Any:
+    def get_images(self, file_key, ids, version=None, scale=None, format=None, svg_outline_text=None, svg_include_id=None, svg_include_node_id=None, svg_simplify_stroke=None, contents_only=None, use_absolute_bounds=None) -> dict[str, Any]:
         """
-        Retrieves image assets from a remote service for specified node IDs within a given file, with optional image format and export options.
+        Retrieves an image specified by the `file_key` using the GET method, allowing optional query parameters for customization such as formatting, scaling, and SVG options.
 
         Args:
-            file_key: str. Unique key identifying the target file. Required.
-            ids: str. Comma-separated list of node IDs to export as images. Required.
-            version: str, optional. Specific file version to export from.
-            scale: float, optional. Image scaling factor; must be between 0.01 and 4.
-            format: str, optional. Output image format (e.g., 'png', 'jpg', 'svg').
-            svg_outline_text: bool, optional. If True, outlines text in SVG exports.
-            svg_include_id: bool, optional. If True, includes node IDs in SVG elements.
-            svg_include_node_id: bool, optional. If True, includes node IDs as attributes in SVG.
-            svg_simplify_stroke: bool, optional. If True, simplifies SVG strokes.
-            contents_only: bool, optional. If True, exports only node contents without background.
-            use_absolute_bounds: bool, optional. If True, uses absolute bounding box for export.
+            file_key (string): file_key
+            ids (string): A comma separated list of node IDs to render.
+            version (string): A specific version ID to get. Omitting this will get the current version of the file.
+            scale (number): A number between 0.01 and 4, the image scaling factor.
+            format (string): A string enum for the image output format.
+            svg_outline_text (boolean): Whether text elements are rendered as outlines (vector paths) or as `<text>` elements in SVGs. Rendering text elements as outlines guarantees that the text looks exactly the same in the SVG as it does in the browser/inside Figma. Exporting as `<text>` allows text to be selectable inside SVGs and generally makes the SVG easier to read. However, this relies on the browser's rendering engine which can vary between browsers and/or operating systems. As such, visual accuracy is not guaranteed as the result could look different than in Figma.
+            svg_include_id (boolean): Whether to include id attributes for all SVG elements. Adds the layer name to the `id` attribute of an svg element.
+            svg_include_node_id (boolean): Whether to include node id attributes for all SVG elements. Adds the node id to a `data-node-id` attribute of an svg element.
+            svg_simplify_stroke (boolean): Whether to simplify inside/outside strokes and use stroke attribute if possible instead of `<mask>`.
+            contents_only (boolean): Whether content that overlaps the node should be excluded from rendering. Passing false (i.e., rendering overlaps) may increase processing time, since more of the document must be included in rendering.
+            use_absolute_bounds (boolean): Use the full dimensions of the node regardless of whether or not it is cropped or the space around it is empty. Use this to export text nodes without cropping.
 
         Returns:
-            dict. Parsed JSON response containing image export links and metadata.
-
-        Raises:
-            ValueError: Raised if either 'file_key' or 'ids' is not provided.
-            requests.HTTPError: Raised if the HTTP request for image assets fails.
+            dict[str, Any]: Response from the GET /v1/images/{file_key} endpoint.
 
         Tags:
-            get, images, export, api-call, batch, important
+            Files
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
-        if ids is None:
-            raise ValueError("Missing required parameter 'ids'")
         url = f"{self.base_url}/v1/images/{file_key}"
-        query_params = {
-            k: v
-            for k, v in [
-                ("ids", ids),
-                ("version", version),
-                ("scale", scale),
-                ("format", format),
-                ("svg_outline_text", svg_outline_text),
-                ("svg_include_id", svg_include_id),
-                ("svg_include_node_id", svg_include_node_id),
-                ("svg_simplify_stroke", svg_simplify_stroke),
-                ("contents_only", contents_only),
-                ("use_absolute_bounds", use_absolute_bounds),
-            ]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('ids', ids), ('version', version), ('scale', scale), ('format', format), ('svg_outline_text', svg_outline_text), ('svg_include_id', svg_include_id), ('svg_include_node_id', svg_include_node_id), ('svg_simplify_stroke', svg_simplify_stroke), ('contents_only', contents_only), ('use_absolute_bounds', use_absolute_bounds)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_image_fills(self, file_key) -> Any:
+    def get_image_fills(self, file_key) -> dict[str, Any]:
         """
-        Retrieves image fill data for a given file key from the API.
+        Retrieves images associated with a file identified by the `{file_key}` using the `/v1/files/{file_key}/images` API endpoint.
 
         Args:
-            file_key: The unique identifier of the file whose image fills are to be retrieved.
+            file_key (string): file_key
 
         Returns:
-            A dictionary or list containing the image fill data as returned by the API.
-
-        Raises:
-            ValueError: If 'file_key' is None.
-            HTTPError: If the HTTP request to the API fails with an error status.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/images endpoint.
 
         Tags:
-            get, images, api
+            Files
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -193,22 +112,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_team_projects(self, team_id) -> Any:
+    def get_team_projects(self, team_id) -> dict[str, Any]:
         """
-        Retrieves the list of projects associated with a specified team.
+        Retrieves a list of projects associated with a specific team identified by the team_id parameter.
 
         Args:
-            team_id: The unique identifier of the team whose projects are to be fetched.
+            team_id (string): team_id
 
         Returns:
-            A deserialized JSON object containing the projects for the given team.
-
-        Raises:
-            ValueError: If 'team_id' is None.
-            requests.HTTPError: If the HTTP request to fetch team projects fails.
+            dict[str, Any]: Response from the GET /v1/teams/{team_id}/projects endpoint.
 
         Tags:
-            get, list, team-projects, management, important
+            Projects
         """
         if team_id is None:
             raise ValueError("Missing required parameter 'team_id'")
@@ -218,122 +133,96 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_project_files(self, project_id, branch_data=None) -> Any:
+    def get_project_files(self, project_id, branch_data=None) -> dict[str, Any]:
         """
-        Retrieves the list of files associated with a specified project, optionally filtered by branch data.
+        Retrieves files from a specified project, optionally including branch data, using the provided project identifier.
 
         Args:
-            project_id: The unique identifier for the project whose files are to be retrieved.
-            branch_data: Optional branch identifier or data used to filter project files. Defaults to None.
+            project_id (string): project_id
+            branch_data (boolean): Returns branch metadata in the response for each main file with a branch inside the project.
 
         Returns:
-            A JSON-decoded object containing the project's file information as returned by the API.
-
-        Raises:
-            ValueError: If the required parameter 'project_id' is not provided.
-            requests.HTTPError: If the HTTP request to retrieve the project files fails.
+            dict[str, Any]: Response from the GET /v1/projects/{project_id}/files endpoint.
 
         Tags:
-            get, project, files, api, important
+            Projects
         """
         if project_id is None:
             raise ValueError("Missing required parameter 'project_id'")
         url = f"{self.base_url}/v1/projects/{project_id}/files"
-        query_params = {
-            k: v for k, v in [("branch_data", branch_data)] if v is not None
-        }
+        query_params = {k: v for k, v in [('branch_data', branch_data)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_file_versions(
-        self, file_key, page_size=None, before=None, after=None
-    ) -> Any:
+    def get_file_versions(self, file_key, page_size=None, before=None, after=None) -> dict[str, Any]:
         """
-        Retrieves a paginated list of version history for a specified file.
+        Retrieves a list of file versions using the "GET" method, filtering by file key and optional query parameters for pagination and sorting.
 
         Args:
-            file_key: The unique identifier of the file for which to fetch version history.
-            page_size: Optional; The maximum number of versions to return per page.
-            before: Optional; A version identifier. Only versions created before this version will be returned.
-            after: Optional; A version identifier. Only versions created after this version will be returned.
+            file_key (string): file_key
+            page_size (number): The number of items returned in a page of the response. If not included, `page_size` is `30`.
+            before (number): A version ID for one of the versions in the history. Gets versions before this ID. Used for paginating. If the response is not paginated, this link returns the same data in the current response.
+            after (number): A version ID for one of the versions in the history. Gets versions after this ID. Used for paginating. If the response is not paginated, this property is not included.
 
         Returns:
-            A JSON-decoded object containing the list of file versions and pagination information.
-
-        Raises:
-            ValueError: If 'file_key' is None.
-            HTTPError: If the HTTP request to fetch the file versions fails.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/versions endpoint.
 
         Tags:
-            list, file-management, version-history, api
+            Files
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         url = f"{self.base_url}/v1/files/{file_key}/versions"
-        query_params = {
-            k: v
-            for k, v in [("page_size", page_size), ("before", before), ("after", after)]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('page_size', page_size), ('before', before), ('after', after)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_comments(self, file_key, as_md=None) -> Any:
+    def get_comments(self, file_key, as_md=None) -> dict[str, Any]:
         """
-        Retrieves comments for a specified file, optionally formatting the output as Markdown.
+        Retrieves comments associated with a specified file and optionally returns them in Markdown format based on the query parameter.
 
         Args:
-            file_key: The unique identifier of the file to fetch comments for.
-            as_md: Optional; if specified, comments are returned as Markdown. Default is None.
+            file_key (string): file_key
+            as_md (boolean): If enabled, will return comments as their markdown equivalents when applicable.
 
         Returns:
-            A JSON-compatible object containing the file's comments.
-
-        Raises:
-            ValueError: Raised if the required parameter 'file_key' is not provided.
-            HTTPError: Raised if the HTTP request for fetching comments fails.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/comments endpoint.
 
         Tags:
-            get, comments, file, api, important
+            Comments
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         url = f"{self.base_url}/v1/files/{file_key}/comments"
-        query_params = {k: v for k, v in [("as_md", as_md)] if v is not None}
+        query_params = {k: v for k, v in [('as_md', as_md)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def post_comment(self, file_key, message, comment_id=None, client_meta=None) -> Any:
+    def post_comment(self, file_key, message, comment_id=None, client_meta=None) -> dict[str, Any]:
         """
-        Posts a comment to a specified file.
+        Creates a new comment on a file specified by the file_key and returns an appropriate status code.
 
         Args:
-            file_key: String identifier of the file to which the comment will be posted.
-            message: String content of the comment to be posted.
-            comment_id: Optional string identifier for the comment, used for threading or replying to existing comments.
-            client_meta: Optional dictionary containing client-specific metadata to be associated with the comment.
+            file_key (string): file_key
+            message (string): The text contents of the comment to post.
+            comment_id (string): The ID of the comment to reply to, if any. This must be a root comment. You cannot reply to other replies (a comment that has a parent_id).
+            client_meta (string): The position where to place the comment.
 
         Returns:
-            Dictionary containing the response data of the created comment from the API.
-
-        Raises:
-            ValueError: Raised when required parameters 'file_key' or 'message' are None.
-            HTTPError: Raised when the API request fails, as indicated by response.raise_for_status().
+            dict[str, Any]: Response from the POST /v1/files/{file_key}/comments endpoint.
 
         Tags:
-            post, comment, file, api, communication, important
+            Comments
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
-        if message is None:
-            raise ValueError("Missing required parameter 'message'")
         request_body = {
-            "message": message,
-            "comment_id": comment_id,
-            "client_meta": client_meta,
+            'message': message,
+            'comment_id': comment_id,
+            'client_meta': client_meta,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v1/files/{file_key}/comments"
@@ -342,23 +231,19 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def delete_comment(self, file_key, comment_id) -> Any:
+    def delete_comment(self, file_key, comment_id) -> dict[str, Any]:
         """
-        Deletes a specific comment from a file identified by its key and comment ID.
+        Deletes a specified comment from a file identified by its file key and comment ID.
 
         Args:
-            file_key: The unique identifier of the file containing the comment to be deleted. Must not be None.
-            comment_id: The unique identifier of the comment to delete. Must not be None.
+            file_key (string): file_key
+            comment_id (string): comment_id
 
         Returns:
-            The server response as a JSON object containing details of the deletion or confirmation.
-
-        Raises:
-            ValueError: If 'file_key' or 'comment_id' is None.
-            requests.HTTPError: If the HTTP request to delete the comment fails with a non-success status code.
+            dict[str, Any]: Response from the DELETE /v1/files/{file_key}/comments/{comment_id} endpoint.
 
         Tags:
-            delete, comment, file-management, api
+            Comments
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -370,62 +255,52 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_comment_reactions(self, file_key, comment_id, cursor=None) -> Any:
+    def get_comment_reactions(self, file_key, comment_id, cursor=None) -> dict[str, Any]:
         """
-        Retrieves the reactions associated with a specific comment in a file.
+        Retrieves reactions for a specific comment in a file using the provided file key and comment ID.
 
         Args:
-            file_key: str. The unique identifier of the file containing the comment.
-            comment_id: str. The unique identifier of the comment whose reactions are to be retrieved.
-            cursor: Optional[str]. A pagination cursor for fetching subsequent pages of reactions. Defaults to None.
+            file_key (string): file_key
+            comment_id (string): comment_id
+            cursor (string): Cursor for pagination, retrieved from the response of the previous call.
 
         Returns:
-            dict. A JSON-decoded dictionary containing the comment reactions data from the API response.
-
-        Raises:
-            ValueError: Raised if 'file_key' or 'comment_id' is None.
-            requests.HTTPError: Raised if the HTTP request to the API fails or returns an error status code.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/comments/{comment_id}/reactions endpoint.
 
         Tags:
-            get, list, reactions, comments, file, api, important
+            Comment Reactions
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         if comment_id is None:
             raise ValueError("Missing required parameter 'comment_id'")
         url = f"{self.base_url}/v1/files/{file_key}/comments/{comment_id}/reactions"
-        query_params = {k: v for k, v in [("cursor", cursor)] if v is not None}
+        query_params = {k: v for k, v in [('cursor', cursor)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def post_comment_reaction(self, file_key, comment_id, emoji) -> Any:
+    def post_comment_reaction(self, file_key, comment_id, emoji) -> dict[str, Any]:
         """
-        Posts a reaction emoji to a specific comment on a file.
+        Adds a reaction to a specific comment on a file identified by the file key and comment ID using the "POST" method at the "/v1/files/{file_key}/comments/{comment_id}/reactions" endpoint.
 
         Args:
-            file_key: str. Identifier for the file containing the comment.
-            comment_id: str. Identifier of the comment to react to.
-            emoji: str. The emoji to be used as the reaction.
+            file_key (string): file_key
+            comment_id (string): comment_id
+            emoji (string): The emoji type of reaction as shortcode (e.g. `:heart:`, `:+1::skin-tone-2:`). The list of accepted emoji shortcodes can be found in [this file](https://raw.githubusercontent.com/missive/emoji-mart/main/packages/emoji-mart-data/sets/14/native.json) under the top-level emojis and aliases fields, with optional skin tone modifiers when applicable.
 
         Returns:
-            dict. The JSON-decoded response from the server after posting the reaction.
-
-        Raises:
-            ValueError: Raised if any of the parameters 'file_key', 'comment_id', or 'emoji' are None.
-            requests.HTTPError: Raised if the HTTP request to post the reaction fails.
+            dict[str, Any]: Response from the POST /v1/files/{file_key}/comments/{comment_id}/reactions endpoint.
 
         Tags:
-            post, comment, reaction, emoji, async_job, ai
+            Comment Reactions
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         if comment_id is None:
             raise ValueError("Missing required parameter 'comment_id'")
-        if emoji is None:
-            raise ValueError("Missing required parameter 'emoji'")
         request_body = {
-            "emoji": emoji,
+            'emoji': emoji,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v1/files/{file_key}/comments/{comment_id}/reactions"
@@ -434,54 +309,40 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def delete_comment_reaction(self, file_key, comment_id, emoji) -> Any:
+    def delete_comment_reaction(self, file_key, comment_id, emoji) -> dict[str, Any]:
         """
-        Removes a specific emoji reaction from a comment in a file.
+        Removes a reaction emoji from a comment on a file using the specified emoji parameter.
 
         Args:
-            file_key: The unique identifier of the file containing the comment.
-            comment_id: The unique identifier of the comment whose reaction should be deleted.
-            emoji: The emoji reaction to be removed from the comment.
+            file_key (string): file_key
+            comment_id (string): comment_id
+            emoji (string): Specifies the emoji identifier to be removed from the comment reaction.
 
         Returns:
-            The parsed JSON response from the API after deleting the reaction.
-
-        Raises:
-            ValueError: Raised if 'file_key', 'comment_id', or 'emoji' is None.
-            requests.HTTPError: Raised if the HTTP request to delete the reaction fails.
+            dict[str, Any]: Response from the DELETE /v1/files/{file_key}/comments/{comment_id}/reactions endpoint.
 
         Tags:
-            delete, comment-reaction, management, api
+            Comment Reactions
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         if comment_id is None:
             raise ValueError("Missing required parameter 'comment_id'")
-        if emoji is None:
-            raise ValueError("Missing required parameter 'emoji'")
         url = f"{self.base_url}/v1/files/{file_key}/comments/{comment_id}/reactions"
-        query_params = {k: v for k, v in [("emoji", emoji)] if v is not None}
+        query_params = {k: v for k, v in [('emoji', emoji)] if v is not None}
         response = self._delete(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_me(
-        self,
-    ) -> Any:
+    def get_me(self) -> Any:
         """
-        Retrieves information about the authenticated user from the API.
-
-        Args:
-            None: This function takes no arguments
+        Retrieves the authenticated user's profile data.
 
         Returns:
-            A dictionary containing the user's information as returned by the API.
-
-        Raises:
-            HTTPError: If the HTTP request to the API fails or returns a non-successful status code.
+            Any: Response from the GET /v1/me endpoint.
 
         Tags:
-            get, user, profile, api, important
+            Users
         """
         url = f"{self.base_url}/v1/me"
         query_params = {}
@@ -489,56 +350,42 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_team_components(
-        self, team_id, page_size=None, after=None, before=None
-    ) -> Any:
+    def get_team_components(self, team_id, page_size=None, after=None, before=None) -> dict[str, Any]:
         """
-        Retrieves a paginated list of components associated with a specified team.
+        Retrieves a list of components for a specified team with pagination support using page_size, after, and before parameters.
 
         Args:
-            team_id: str. The unique identifier of the team whose components are to be retrieved.
-            page_size: Optional[int]. The maximum number of components to return per page.
-            after: Optional[str]. A cursor for pagination to fetch results after this value.
-            before: Optional[str]. A cursor for pagination to fetch results before this value.
+            team_id (string): team_id
+            page_size (number): Number of items to return in a paged list of results. Defaults to 30.
+            after (number): Cursor indicating which id after which to start retrieving components for. Exclusive with before. The cursor value is an internally tracked integer that doesn't correspond to any Ids.
+            before (number): Cursor indicating which id before which to start retrieving components for. Exclusive with after. The cursor value is an internally tracked integer that doesn't correspond to any Ids.
 
         Returns:
-            dict. A JSON-decoded dictionary containing the team components and pagination details.
-
-        Raises:
-            ValueError: Raised if 'team_id' is not provided.
-            requests.exceptions.HTTPError: Raised if the HTTP request to fetch components fails.
+            dict[str, Any]: Response from the GET /v1/teams/{team_id}/components endpoint.
 
         Tags:
-            get, list, components, team, api, pagination
+            Components
         """
         if team_id is None:
             raise ValueError("Missing required parameter 'team_id'")
         url = f"{self.base_url}/v1/teams/{team_id}/components"
-        query_params = {
-            k: v
-            for k, v in [("page_size", page_size), ("after", after), ("before", before)]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('page_size', page_size), ('after', after), ('before', before)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_file_components(self, file_key) -> Any:
+    def get_file_components(self, file_key) -> dict[str, Any]:
         """
-        Retrieves the component information for a specified file from the API.
+        Retrieves a list of components associated with a file identified by the specified file key using the API endpoint "/v1/files/{file_key}/components".
 
         Args:
-            file_key: The unique identifier of the file for which to fetch component details.
+            file_key (string): file_key
 
         Returns:
-            A JSON-serializable object containing the components of the specified file.
-
-        Raises:
-            ValueError: If 'file_key' is None.
-            requests.exceptions.HTTPError: If the HTTP request fails or returns an unsuccessful status code.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/components endpoint.
 
         Tags:
-            get, file, components, api
+            Components
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -548,22 +395,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_component(self, key) -> Any:
+    def get_component(self, key) -> dict[str, Any]:
         """
-        Retrieves a component's details by its key from the API.
+        Retrieves component information for a specific key using the API endpoint at "/v1/components/{key}" with the GET method.
 
         Args:
-            key: The unique identifier for the component to retrieve.
+            key (string): key
 
         Returns:
-            A dictionary containing the component's details as returned by the API.
-
-        Raises:
-            ValueError: Raised if the 'key' parameter is None.
-            requests.HTTPError: Raised if the HTTP request fails or the response status indicates an error.
+            dict[str, Any]: Response from the GET /v1/components/{key} endpoint.
 
         Tags:
-            get, component, api, management
+            Components
         """
         if key is None:
             raise ValueError("Missing required parameter 'key'")
@@ -573,56 +416,42 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_team_component_sets(
-        self, team_id, page_size=None, after=None, before=None
-    ) -> Any:
+    def get_team_component_sets(self, team_id, page_size=None, after=None, before=None) -> dict[str, Any]:
         """
-        Retrieves a paginated list of component sets for a specified team.
+        Retrieves a paginated list of component sets associated with a specific team ID, supporting pagination via page size, after, and before query parameters.
 
         Args:
-            team_id: str. The unique identifier of the team whose component sets are to be retrieved.
-            page_size: Optional[int]. The maximum number of results to return per page.
-            after: Optional[str]. A cursor for pagination to retrieve results after the specified object.
-            before: Optional[str]. A cursor for pagination to retrieve results before the specified object.
+            team_id (string): team_id
+            page_size (number): Number of items to return in a paged list of results. Defaults to 30.
+            after (number): Cursor indicating which id after which to start retrieving component sets for. Exclusive with before. The cursor value is an internally tracked integer that doesn't correspond to any Ids.
+            before (number): Cursor indicating which id before which to start retrieving component sets for. Exclusive with after. The cursor value is an internally tracked integer that doesn't correspond to any Ids.
 
         Returns:
-            dict. The JSON response containing the list of component sets and any associated pagination metadata.
-
-        Raises:
-            ValueError: If 'team_id' is None.
-            HTTPError: If the HTTP request to the API fails or returns an unsuccessful status code.
+            dict[str, Any]: Response from the GET /v1/teams/{team_id}/component_sets endpoint.
 
         Tags:
-            list, component-sets, team, api, async-job
+            Component Sets
         """
         if team_id is None:
             raise ValueError("Missing required parameter 'team_id'")
         url = f"{self.base_url}/v1/teams/{team_id}/component_sets"
-        query_params = {
-            k: v
-            for k, v in [("page_size", page_size), ("after", after), ("before", before)]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('page_size', page_size), ('after', after), ('before', before)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_file_component_sets(self, file_key) -> Any:
+    def get_file_component_sets(self, file_key) -> dict[str, Any]:
         """
-        Retrieves the list of component sets associated with a specific file key.
+        Retrieves the component sets associated with a file identified by a specific file key using the "GET" method at the "/v1/files/{file_key}/component_sets" endpoint.
 
         Args:
-            file_key: The unique identifier of the file whose component sets are to be fetched.
+            file_key (string): file_key
 
         Returns:
-            A JSON-compatible object containing the component sets data for the specified file.
-
-        Raises:
-            ValueError: Raised when the required parameter 'file_key' is None.
-            requests.HTTPError: Raised if the HTTP request to the remote server fails or returns an unsuccessful status code.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/component_sets endpoint.
 
         Tags:
-            get, list, component-sets, file, api
+            Component Sets
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -632,22 +461,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_component_set(self, key) -> Any:
+    def get_component_set(self, key) -> dict[str, Any]:
         """
-        Retrieves a component set resource by its key from the server.
+        Retrieves a component set by its unique key identifier and returns the associated component data.
 
         Args:
-            key: The unique identifier (string or compatible) of the component set to retrieve. Must not be None.
+            key (string): key
 
         Returns:
-            A JSON-decoded object containing the component set data as returned by the server.
-
-        Raises:
-            ValueError: If the 'key' parameter is None.
-            requests.HTTPError: If the HTTP request fails or returns an unsuccessful status code.
+            dict[str, Any]: Response from the GET /v1/component_sets/{key} endpoint.
 
         Tags:
-            get, component-set, retrieve, ai
+            Component Sets
         """
         if key is None:
             raise ValueError("Missing required parameter 'key'")
@@ -657,54 +482,42 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_team_styles(self, team_id, page_size=None, after=None, before=None) -> Any:
+    def get_team_styles(self, team_id, page_size=None, after=None, before=None) -> dict[str, Any]:
         """
-        Retrieves a list of styles for a specified team, with optional pagination controls.
+        Retrieves paginated style resources associated with a specific team using query parameters for pagination control.
 
         Args:
-            team_id: str. The unique identifier of the team whose styles are to be retrieved.
-            page_size: Optional[int]. The maximum number of style records to return per page.
-            after: Optional[str]. A cursor for pagination to retrieve records after a specific point.
-            before: Optional[str]. A cursor for pagination to retrieve records before a specific point.
+            team_id (string): team_id
+            page_size (number): Number of items to return in a paged list of results. Defaults to 30.
+            after (number): Cursor indicating which id after which to start retrieving styles for. Exclusive with before. The cursor value is an internally tracked integer that doesn't correspond to any Ids.
+            before (number): Cursor indicating which id before which to start retrieving styles for. Exclusive with after. The cursor value is an internally tracked integer that doesn't correspond to any Ids.
 
         Returns:
-            dict. The JSON response containing the team's styles and pagination information.
-
-        Raises:
-            ValueError: If 'team_id' is not provided.
-            requests.HTTPError: If the HTTP request fails or returns an error status code.
+            dict[str, Any]: Response from the GET /v1/teams/{team_id}/styles endpoint.
 
         Tags:
-            get, list, team, styles, pagination, api
+            Styles
         """
         if team_id is None:
             raise ValueError("Missing required parameter 'team_id'")
         url = f"{self.base_url}/v1/teams/{team_id}/styles"
-        query_params = {
-            k: v
-            for k, v in [("page_size", page_size), ("after", after), ("before", before)]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('page_size', page_size), ('after', after), ('before', before)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_file_styles(self, file_key) -> Any:
+    def get_file_styles(self, file_key) -> dict[str, Any]:
         """
-        Retrieves the style definitions for a specified file from the API.
+        Retrieves styles information for a specific file identified by the file key using the API endpoint "/v1/files/{file_key}/styles" with the GET method.
 
         Args:
-            file_key: The unique identifier of the file whose styles are to be fetched.
+            file_key (string): file_key
 
         Returns:
-            A JSON-serializable object containing the style information of the requested file.
-
-        Raises:
-            ValueError: If 'file_key' is None.
-            requests.HTTPError: If the HTTP request to the API fails or returns an error status.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/styles endpoint.
 
         Tags:
-            get, file, styles, api, management
+            Styles
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -714,22 +527,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_style(self, key) -> Any:
+    def get_style(self, key) -> dict[str, Any]:
         """
-        Retrieves a style resource identified by the given key from the API.
+        Retrieves a style object associated with the specified key using the "GET" method at the "/v1/styles/{key}" endpoint.
 
         Args:
-            key: The unique identifier of the style to retrieve. Must not be None.
+            key (string): key
 
         Returns:
-            A dictionary representing the style resource as returned by the API.
-
-        Raises:
-            ValueError: If the 'key' parameter is None.
-            requests.HTTPError: If the HTTP request to the API fails (non-success status code).
+            dict[str, Any]: Response from the GET /v1/styles/{key} endpoint.
 
         Tags:
-            get, style, api, management, important
+            Styles
         """
         if key is None:
             raise ValueError("Missing required parameter 'key'")
@@ -739,45 +548,33 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def post_webhook(
-        self, event_type, team_id, endpoint, passcode, status=None, description=None
-    ) -> Any:
+    def post_webhook(self, event_type, team_id, endpoint, passcode, status=None, description=None) -> dict[str, Any]:
         """
-        Registers a new webhook for a specified event type and team.
+        Registers a new webhook to receive HTTP callbacks for specified events, returning success or error status codes.
 
         Args:
-            event_type: str. The type of event that will trigger the webhook. Required.
-            team_id: str. The unique identifier of the team to associate with the webhook. Required.
-            endpoint: str. The URL endpoint where the webhook payloads will be sent. Required.
-            passcode: str. A secret passcode used to secure webhook communication. Required.
-            status: Optional[str]. The status of the webhook (e.g., 'active', 'inactive'). Defaults to None.
-            description: Optional[str]. A description of the webhook's purpose. Defaults to None.
+            event_type (string): An enum representing the possible events that a webhook can subscribe to
+            team_id (string): Team id to receive updates about
+            endpoint (string): The HTTP endpoint that will receive a POST request when the event triggers. Max length 2048 characters.
+            passcode (string): String that will be passed back to your webhook endpoint to verify that it is being called by Figma. Max length 100 characters.
+            status (string): An enum representing the possible statuses you can set a webhook to:
+        - `ACTIVE`: The webhook is healthy and receive all events
+        - `PAUSED`: The webhook is paused and will not receive any events
+            description (string): User provided description or name for the webhook. Max length 150 characters.
 
         Returns:
-            dict. The JSON response from the webhook creation API containing details of the registered webhook.
-
-        Raises:
-            ValueError: If any of the required parameters ('event_type', 'team_id', 'endpoint', or 'passcode') are missing.
-            HTTPError: If the HTTP request to register the webhook fails (non-2xx status code).
+            dict[str, Any]: Response from the POST /v2/webhooks endpoint.
 
         Tags:
-            post, webhook, registration, api
+            Webhooks
         """
-        if event_type is None:
-            raise ValueError("Missing required parameter 'event_type'")
-        if team_id is None:
-            raise ValueError("Missing required parameter 'team_id'")
-        if endpoint is None:
-            raise ValueError("Missing required parameter 'endpoint'")
-        if passcode is None:
-            raise ValueError("Missing required parameter 'passcode'")
         request_body = {
-            "event_type": event_type,
-            "team_id": team_id,
-            "endpoint": endpoint,
-            "passcode": passcode,
-            "status": status,
-            "description": description,
+            'event_type': event_type,
+            'team_id': team_id,
+            'endpoint': endpoint,
+            'passcode': passcode,
+            'status': status,
+            'description': description,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v2/webhooks"
@@ -786,22 +583,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_webhook(self, webhook_id) -> Any:
+    def get_webhook(self, webhook_id) -> dict[str, Any]:
         """
-        Retrieves the details of a specific webhook by its unique identifier.
+        Retrieves information about a specific webhook by its ID using the "GET" method at the path "/v2/webhooks/{webhook_id}".
 
         Args:
-            webhook_id: The unique identifier of the webhook to retrieve. Must not be None.
+            webhook_id (string): webhook_id
 
         Returns:
-            A dictionary containing the webhook details as returned by the API.
-
-        Raises:
-            ValueError: If 'webhook_id' is None.
-            requests.HTTPError: If the HTTP request to the API fails (non-2xx response).
+            dict[str, Any]: Response from the GET /v2/webhooks/{webhook_id} endpoint.
 
         Tags:
-            get, webhook, api, important
+            Webhooks
         """
         if webhook_id is None:
             raise ValueError("Missing required parameter 'webhook_id'")
@@ -811,44 +604,34 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def put_webhook(
-        self, webhook_id, event_type, endpoint, passcode, status=None, description=None
-    ) -> Any:
+    def put_webhook(self, webhook_id, event_type, endpoint, passcode, status=None, description=None) -> dict[str, Any]:
         """
-        Update an existing webhook's configuration with new settings such as event type, endpoint, passcode, status, or description.
+        Updates an existing webhook's configuration using the provided webhook ID and returns an HTTP status code indicating success or failure.
 
         Args:
-            webhook_id: The unique identifier of the webhook to update.
-            event_type: The type of event that triggers the webhook.
-            endpoint: The destination URL that will receive webhook payloads.
-            passcode: The security passcode for webhook authentication.
-            status: Optional; the activation status of the webhook (e.g., enabled, disabled).
-            description: Optional; a human-readable description of the webhook.
+            webhook_id (string): webhook_id
+            event_type (string): An enum representing the possible events that a webhook can subscribe to
+            endpoint (string): The HTTP endpoint that will receive a POST request when the event triggers. Max length 2048 characters.
+            passcode (string): String that will be passed back to your webhook endpoint to verify that it is being called by Figma. Max length 100 characters.
+            status (string): An enum representing the possible statuses you can set a webhook to:
+        - `ACTIVE`: The webhook is healthy and receive all events
+        - `PAUSED`: The webhook is paused and will not receive any events
+            description (string): User provided description or name for the webhook. Max length 150 characters.
 
         Returns:
-            A dictionary containing the JSON response from the server after updating the webhook.
-
-        Raises:
-            ValueError: If any of 'webhook_id', 'event_type', 'endpoint', or 'passcode' is None.
-            requests.HTTPError: If the server responds with an HTTP error status code.
+            dict[str, Any]: Response from the PUT /v2/webhooks/{webhook_id} endpoint.
 
         Tags:
-            update, webhook, management, api
+            Webhooks
         """
         if webhook_id is None:
             raise ValueError("Missing required parameter 'webhook_id'")
-        if event_type is None:
-            raise ValueError("Missing required parameter 'event_type'")
-        if endpoint is None:
-            raise ValueError("Missing required parameter 'endpoint'")
-        if passcode is None:
-            raise ValueError("Missing required parameter 'passcode'")
         request_body = {
-            "event_type": event_type,
-            "endpoint": endpoint,
-            "passcode": passcode,
-            "status": status,
-            "description": description,
+            'event_type': event_type,
+            'endpoint': endpoint,
+            'passcode': passcode,
+            'status': status,
+            'description': description,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v2/webhooks/{webhook_id}"
@@ -857,22 +640,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def delete_webhook(self, webhook_id) -> Any:
+    def delete_webhook(self, webhook_id) -> dict[str, Any]:
         """
-        Deletes a webhook with the specified webhook ID.
+        Deletes a webhook identified by its `webhook_id`, permanently removing it to manage and optimize webhook configurations.
 
         Args:
-            webhook_id: str. The unique identifier of the webhook to delete.
+            webhook_id (string): webhook_id
 
         Returns:
-            dict. The JSON response from the server after successful deletion.
-
-        Raises:
-            ValueError: If 'webhook_id' is None.
-            HTTPError: If the HTTP request to delete the webhook fails.
+            dict[str, Any]: Response from the DELETE /v2/webhooks/{webhook_id} endpoint.
 
         Tags:
-            delete, webhook, management, api
+            Webhooks
         """
         if webhook_id is None:
             raise ValueError("Missing required parameter 'webhook_id'")
@@ -882,22 +661,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_team_webhooks(self, team_id) -> Any:
+    def get_team_webhooks(self, team_id) -> dict[str, Any]:
         """
-        Retrieves the list of webhooks configured for a given team.
+        Retrieves a list of webhooks for a specified team using the "GET" method, with the team identified by the `team_id` path parameter.
 
         Args:
-            team_id: The unique identifier of the team whose webhooks are to be fetched.
+            team_id (string): team_id
 
         Returns:
-            A JSON-decoded object containing the team's webhook configurations.
-
-        Raises:
-            ValueError: If 'team_id' is None.
-            requests.HTTPError: If the HTTP request to fetch webhooks fails.
+            dict[str, Any]: Response from the GET /v2/teams/{team_id}/webhooks endpoint.
 
         Tags:
-            get, webhooks, team, api, management
+            Webhooks
         """
         if team_id is None:
             raise ValueError("Missing required parameter 'team_id'")
@@ -907,22 +682,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_webhook_requests(self, webhook_id) -> Any:
+    def get_webhook_requests(self, webhook_id) -> dict[str, Any]:
         """
-        Retrieves the list of requests for a specified webhook.
+        Retrieves a list of requests for a specific webhook identified by `{webhook_id}` using the "GET" method.
 
         Args:
-            webhook_id: The unique identifier of the webhook for which to retrieve requests.
+            webhook_id (string): webhook_id
 
         Returns:
-            A JSON-decoded object containing the list of requests associated with the webhook.
-
-        Raises:
-            ValueError: If 'webhook_id' is None.
-            requests.HTTPError: If the HTTP request to the webhook endpoint fails.
+            dict[str, Any]: Response from the GET /v2/webhooks/{webhook_id}/requests endpoint.
 
         Tags:
-            get, webhook, requests, api
+            Webhooks
         """
         if webhook_id is None:
             raise ValueError("Missing required parameter 'webhook_id'")
@@ -932,103 +703,64 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_activity_logs(
-        self, events=None, start_time=None, end_time=None, limit=None, order=None
-    ) -> Any:
+    def get_activity_logs(self, events=None, start_time=None, end_time=None, limit=None, order=None) -> dict[str, Any]:
         """
-        Retrieves activity logs from the API with optional filters for events, time range, limit, and order.
+        Retrieves a list of activity logs filtered by specified events, time range, and other parameters, returning the results in a specified order with a limited number of entries.
 
         Args:
-            events: Optional; a filter specifying which event types to include in the logs.
-            start_time: Optional; the start of the time range (ISO 8601 format) for fetching logs.
-            end_time: Optional; the end of the time range (ISO 8601 format) for fetching logs.
-            limit: Optional; the maximum number of log records to retrieve.
-            order: Optional; the order to sort the logs, such as 'asc' or 'desc'.
+            events (string): Event type(s) to include in the response. Can have multiple values separated by comma. All events are returned by default.
+            start_time (number): Unix timestamp of the least recent event to include. This param defaults to one year ago if unspecified. Events prior to one year ago are not available.
+            end_time (number): Unix timestamp of the most recent event to include. This param defaults to the current timestamp if unspecified.
+            limit (number): Maximum number of events to return. This param defaults to 1000 if unspecified.
+            order (string): Event order by timestamp. This param can be either "asc" (default) or "desc".
 
         Returns:
-            A JSON-decoded object containing the retrieved activity logs.
-
-        Raises:
-            requests.HTTPError: If the HTTP request to the API fails or returns an error status code.
+            dict[str, Any]: Response from the GET /v1/activity_logs endpoint.
 
         Tags:
-            get, list, logs, activity, filter, api
+            Activity Logs
         """
         url = f"{self.base_url}/v1/activity_logs"
-        query_params = {
-            k: v
-            for k, v in [
-                ("events", events),
-                ("start_time", start_time),
-                ("end_time", end_time),
-                ("limit", limit),
-                ("order", order),
-            ]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('events', events), ('start_time', start_time), ('end_time', end_time), ('limit', limit), ('order', order)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_payments(
-        self,
-        plugin_payment_token=None,
-        user_id=None,
-        community_file_id=None,
-        plugin_id=None,
-        widget_id=None,
-    ) -> Any:
+    def get_payments(self, plugin_payment_token=None, user_id=None, community_file_id=None, plugin_id=None, widget_id=None) -> dict[str, Any]:
         """
-        Retrieves a list of payments based on the provided filter criteria.
+        Retrieves payment information based on specified parameters, including plugin payment token, user ID, community file ID, plugin ID, and widget ID, using the "/v1/payments" API endpoint with a GET request.
 
         Args:
-            plugin_payment_token: Optional; unique token identifying the plugin payment. Used to filter results to payments associated with this token.
-            user_id: Optional; unique user identifier. Limits results to payments related to this user.
-            community_file_id: Optional; unique community file identifier. Filters payments associated with this file.
-            plugin_id: Optional; unique plugin identifier. Filters payments related to this plugin.
-            widget_id: Optional; unique widget identifier. Restricts results to payments linked to this widget.
+            plugin_payment_token (string): Short-lived token returned from "getPluginPaymentTokenAsync" in the plugin payments API and used to authenticate to this endpoint. Read more about generating this token through "Calling the Payments REST API from a plugin or widget" below.
+            user_id (number): The ID of the user to query payment information about. You can get the user ID by having the user OAuth2 to the Figma REST API.
+            community_file_id (number): The ID of the Community file to query a user's payment information on. You can get the Community file ID from the file's Community page (look for the number after "file/" in the URL). Provide exactly one of "community_file_id", "plugin_id", or "widget_id".
+            plugin_id (number): The ID of the plugin to query a user's payment information on. You can get the plugin ID from the plugin's manifest, or from the plugin's Community page (look for the number after "plugin/" in the URL). Provide exactly one of "community_file_id", "plugin_id", or "widget_id".
+            widget_id (number): The ID of the widget to query a user's payment information on. You can get the widget ID from the widget's manifest, or from the widget's Community page (look for the number after "widget/" in the URL). Provide exactly one of "community_file_id", "plugin_id", or "widget_id".
 
         Returns:
-            A JSON-compatible object containing the list of payments matching the specified filters.
-
-        Raises:
-            HTTPError: If the HTTP request to the payments endpoint fails (e.g., server error, authentication failure, or invalid request).
+            dict[str, Any]: Response from the GET /v1/payments endpoint.
 
         Tags:
-            get, payments, list, filter, api
+            Payments
         """
         url = f"{self.base_url}/v1/payments"
-        query_params = {
-            k: v
-            for k, v in [
-                ("plugin_payment_token", plugin_payment_token),
-                ("user_id", user_id),
-                ("community_file_id", community_file_id),
-                ("plugin_id", plugin_id),
-                ("widget_id", widget_id),
-            ]
-            if v is not None
-        }
+        query_params = {k: v for k, v in [('plugin_payment_token', plugin_payment_token), ('user_id', user_id), ('community_file_id', community_file_id), ('plugin_id', plugin_id), ('widget_id', widget_id)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def get_local_variables(self, file_key) -> Any:
+    def get_local_variables(self, file_key) -> dict[str, Any]:
         """
-        Retrieves the local variables associated with a specific file identified by file_key.
+        Retrieves local variables for a file specified by the "file_key" using the "GET" method.
 
         Args:
-            file_key: The unique identifier of the file whose local variables are to be retrieved.
+            file_key (string): file_key
 
         Returns:
-            A JSON-compatible object containing the local variables for the specified file.
-
-        Raises:
-            ValueError: Raised if the file_key parameter is None, indicating a missing required parameter.
-            HTTPError: Raised if the HTTP request to fetch local variables fails due to a non-successful response status.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/variables/local endpoint.
 
         Tags:
-            get, variables, file, api
+            Variables
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -1038,22 +770,18 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_published_variables(self, file_key) -> Any:
+    def get_published_variables(self, file_key) -> dict[str, Any]:
         """
-        Retrieves the published variables associated with a specified file key from the server.
+        Retrieves the published variables for a file identified by the `{file_key}` using the `GET` method.
 
         Args:
-            file_key: The unique identifier of the file whose published variables are to be fetched.
+            file_key (string): file_key
 
         Returns:
-            A JSON-deserialized object containing the published variables for the specified file.
-
-        Raises:
-            ValueError: Raised if 'file_key' is None.
-            requests.HTTPError: Raised if the HTTP request to fetch the published variables fails with a non-success status code.
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/variables/published endpoint.
 
         Tags:
-            get, variables, file-management, api
+            Variables
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -1063,41 +791,30 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def post_variables(
-        self,
-        file_key,
-        variableCollections=None,
-        variableModes=None,
-        variables=None,
-        variableModeValues=None,
-    ) -> Any:
+    def post_variables(self, file_key, variableCollections=None, variableModes=None, variables=None, variableModeValues=None) -> dict[str, Any]:
         """
-        Posts or updates variable data for a specified file by sending a POST request to the variables endpoint.
+        Creates variables for a specific file identified by its file_key and returns an appropriate status code based on the operation's outcome.
 
         Args:
-            file_key: The unique identifier of the file for which variables are being set or modified. Must not be None.
-            variableCollections: Optional; a collection or list of variable groups to include in the request body.
-            variableModes: Optional; a set or list describing variable modes to be associated with the file.
-            variables: Optional; a dictionary or list containing individual variable definitions to include.
-            variableModeValues: Optional; a mapping of variable modes to their corresponding values.
+            file_key (string): file_key
+            variableCollections (array): For creating, updating, and deleting variable collections.
+            variableModes (array): For creating, updating, and deleting modes within variable collections.
+            variables (array): For creating, updating, and deleting variables.
+            variableModeValues (array): For setting a specific value, given a variable and a mode.
 
         Returns:
-            The JSON-decoded response from the variables API, typically containing the status or result of the operation.
-
-        Raises:
-            ValueError: If 'file_key' is None.
-            requests.HTTPError: If the HTTP request to the server fails or the response indicates an error status.
+            dict[str, Any]: Response from the POST /v1/files/{file_key}/variables endpoint.
 
         Tags:
-            post, variables, management, api
+            Variables
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         request_body = {
-            "variableCollections": variableCollections,
-            "variableModes": variableModes,
-            "variables": variables,
-            "variableModeValues": variableModeValues,
+            'variableCollections': variableCollections,
+            'variableModes': variableModes,
+            'variables': variables,
+            'variableModeValues': variableModeValues,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v1/files/{file_key}/variables"
@@ -1106,53 +823,43 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def get_dev_resources(self, file_key, node_ids=None) -> Any:
+    def get_dev_resources(self, file_key, node_ids=None) -> dict[str, Any]:
         """
-        Retrieves development resources for a specific file.
+        Retrieves development resources associated with a specific file, identified by its file_key, with optional filtering by node IDs.
 
         Args:
-            file_key: String identifier for the file to retrieve development resources from.
-            node_ids: Optional list of node identifiers to filter the development resources by.
+            file_key (string): file_key
+            node_ids (string): Comma separated list of nodes that you care about in the document. If specified, only dev resources attached to these nodes will be returned. If not specified, all dev resources in the file will be returned.
 
         Returns:
-            JSON object containing the development resources for the specified file.
-
-        Raises:
-            ValueError: Raised when the required 'file_key' parameter is None.
-            HTTPError: Raised when the API request fails (via raise_for_status()).
+            dict[str, Any]: Response from the GET /v1/files/{file_key}/dev_resources endpoint.
 
         Tags:
-            retrieve, get, file, resources, development, api
+            Dev Resources
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
         url = f"{self.base_url}/v1/files/{file_key}/dev_resources"
-        query_params = {k: v for k, v in [("node_ids", node_ids)] if v is not None}
+        query_params = {k: v for k, v in [('node_ids', node_ids)] if v is not None}
         response = self._get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
-    def post_dev_resources(self, dev_resources) -> Any:
+    def post_dev_resources(self, dev_resources) -> dict[str, Any]:
         """
-        Submits developer resources to the API and returns the parsed JSON response.
+        Creates developer resources via the API and returns a status response.
 
         Args:
-            dev_resources: The developer resources to be submitted to the API. Must not be None.
+            dev_resources (array): An array of dev resources.
 
         Returns:
-            dict: The JSON-decoded response from the API after submitting the developer resources.
-
-        Raises:
-            ValueError: Raised when the required parameter 'dev_resources' is None.
-            requests.HTTPError: Raised if the API request results in an HTTP error status.
+            dict[str, Any]: Response from the POST /v1/dev_resources endpoint.
 
         Tags:
-            post, dev-resources, api, http
+            Dev Resources
         """
-        if dev_resources is None:
-            raise ValueError("Missing required parameter 'dev_resources'")
         request_body = {
-            "dev_resources": dev_resources,
+            'dev_resources': dev_resources,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v1/dev_resources"
@@ -1161,27 +868,21 @@ class FigmaApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def put_dev_resources(self, dev_resources) -> Any:
+    def put_dev_resources(self, dev_resources) -> dict[str, Any]:
         """
-        Updates the development resources by sending a PUT request to the dev_resources endpoint.
+        Replaces a specific developer resource at the specified path with updated data, returning a status code for success or error conditions.
 
         Args:
-            dev_resources: The development resources data to be updated. This must not be None.
+            dev_resources (array): An array of dev resources.
 
         Returns:
-            The parsed JSON response from the server as a dictionary or relevant data structure.
-
-        Raises:
-            ValueError: If the 'dev_resources' parameter is None.
-            requests.HTTPError: If the HTTP request fails or returns a non-success status code.
+            dict[str, Any]: Response from the PUT /v1/dev_resources endpoint.
 
         Tags:
-            put, dev-resources, update, api
+            Dev Resources
         """
-        if dev_resources is None:
-            raise ValueError("Missing required parameter 'dev_resources'")
         request_body = {
-            "dev_resources": dev_resources,
+            'dev_resources': dev_resources,
         }
         request_body = {k: v for k, v in request_body.items() if v is not None}
         url = f"{self.base_url}/v1/dev_resources"
@@ -1192,21 +893,17 @@ class FigmaApp(APIApplication):
 
     def delete_dev_resource(self, file_key, dev_resource_id) -> Any:
         """
-        Deletes a specific development resource associated with a file.
+        Deletes a specific development resource associated with a file using the provided file key and development resource ID.
 
         Args:
-            file_key: The unique identifier for the file containing the development resource.
-            dev_resource_id: The unique identifier of the development resource to delete.
+            file_key (string): file_key
+            dev_resource_id (string): dev_resource_id
 
         Returns:
-            The parsed JSON response from the API after successful deletion of the development resource.
-
-        Raises:
-            ValueError: Raised if either 'file_key' or 'dev_resource_id' is None.
-            requests.HTTPError: Raised if the HTTP request to delete the development resource fails.
+            Any: Response from the DELETE /v1/files/{file_key}/dev_resources/{dev_resource_id} endpoint.
 
         Tags:
-            delete, dev-resource, management, api
+            Dev Resources
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -1257,5 +954,5 @@ class FigmaApp(APIApplication):
             self.get_dev_resources,
             self.post_dev_resources,
             self.put_dev_resources,
-            self.delete_dev_resource,
+            self.delete_dev_resource
         ]
