@@ -4,7 +4,7 @@ from universal_mcp.integrations import Integration
 
 class FigmaApp(APIApplication):
     def __init__(self, integration: Integration = None, **kwargs) -> None:
-        super().__init__(name='figmaapp', integration=integration, **kwargs)
+        super().__init__(name='figma', integration=integration, **kwargs)
         self.base_url = "https://api.figma.com"
 
     def get_file(self, file_key, version=None, ids=None, depth=None, geometry=None, plugin_data=None, branch_data=None) -> dict[str, Any]:
