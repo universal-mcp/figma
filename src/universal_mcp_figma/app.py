@@ -24,7 +24,7 @@ class FigmaApp(APIApplication):
             dict[str, Any]: Response from the GET /v1/files/{file_key} endpoint.
 
         Tags:
-            Files
+            Files, important
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -50,7 +50,7 @@ class FigmaApp(APIApplication):
             dict[str, Any]: Response from the GET /v1/files/{file_key}/nodes endpoint.
 
         Tags:
-            Files
+            Files, important
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -81,7 +81,7 @@ class FigmaApp(APIApplication):
             dict[str, Any]: Response from the GET /v1/images/{file_key} endpoint.
 
         Tags:
-            Files
+            Files, important
         """
         if file_key is None:
             raise ValueError("Missing required parameter 'file_key'")
@@ -342,7 +342,7 @@ class FigmaApp(APIApplication):
             Any: Response from the GET /v1/me endpoint.
 
         Tags:
-            Users
+            Users, important
         """
         url = f"{self.base_url}/v1/me"
         query_params = {}
